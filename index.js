@@ -20,7 +20,7 @@ morgan.format(
 
 app.use(morgan('postFormat'));
 
-app.get('info', (request, response) => {
+app.get('/info', (request, response) => {
 	Person.find({}).then((persons) => {
 		response.send(`<div><p>Phonebook has info for ${
 			persons.length
