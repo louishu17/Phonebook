@@ -5,34 +5,49 @@ const app = express();
 const cors = require('cors');
 const Person = require('./models/person');
 
+app.use(express.static('build'));
 app.use(cors());
 app.use(express.json());
 
-morgan.token('post', (request) => {
-	if (request.method === 'POST') return JSON.stringify(request.body);
-	else return '';
-});
-
-morgan.format(
-	'postFormat',
-	':method :url :status :res[content-length] - :response-time ms :post'
+app.use(
+	morgan(function (tokens, req, res) {
+		return [
+			tokens.method(req, res),
+			tokens.url(req, res),
+			tokens.status(req, res),
+			tokens.res(req, res, 'content-length'),
+			'-',
+			tokens['response-time'](req, res),
+			'ms',
+			JSON.stringify(req.body),
+		].join(' ');
+	})
 );
-
-app.use(morgan('postFormat'));
-
-app.get('/info', (request, response) => {
-	Person.find({}).then((persons) => {
-		response.send(`<div><p>Phonebook has info for ${
-			persons.length
-		} people</p></div>
-		<div><p>${new Date()}</p></div>`);
-	});
-});
 
 app.get('/api/persons', (request, response) => {
 	Person.find({}).then((persons) => {
 		response.json(persons);
 	});
+});
+
+app.get('/api/info', (request, response) => {
+	const maxId = persons.length > 0 ? Math.max(...persons.map((n) => n.id)) : 0;
+	console.log(new Date());
+	response.send(`<div><p>Phonebook has info for ${maxId} people</p></div>
+                    <div><p>${new Date()}</p></div>`);
+});
+
+app.get('/api/persons/:id', (request, response) => {
+	Person.findById(request.params.id).then((person) => {
+		response.json(person);
+	});
+});
+
+app.delete('/api/persons/:id', (request, response) => {
+	const id = Number(request.params.id);
+	persons = persons.filter((person) => person.id !== id);
+
+	response.status(204).end();
 });
 
 app.post('/api/persons', (request, response) => {
@@ -51,25 +66,9 @@ app.post('/api/persons', (request, response) => {
 		number: body.number,
 	});
 
-	person
-		.save()
-		.then((savedPerson) => savedPerson.toJSON())
-		.then((savedAndFormattedPerson) => {
-			response.json(savedAndFormattedPerson);
-		});
-});
-
-app.get('/api/persons/:id', (request, response) => {
-	Person.findById(request.params.id).then((person) => {
-		response.json(person);
+	person.save().then((savedPerson) => {
+		response.json(savedPerson);
 	});
-});
-
-app.delete('/api/persons/:id', (request, response) => {
-	const id = Number(request.params.id);
-	persons = persons.filter((person) => person.id !== id);
-
-	response.status(204).end();
 });
 
 const PORT = process.env.PORT;
